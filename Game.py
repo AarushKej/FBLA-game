@@ -1,23 +1,35 @@
 import pygame as py
 from random import randint
 import time
-
-'''
-Add typing capabilities
-Add timer
-Add scoring
-'''
+from user import User
 
 py.init()
 dimensions = (width, height) = (500, 700)
 screen = py.display.set_mode(dimensions)
 font = py.font.Font('freesansbold.ttf', 32)
+users = []
+
+def update_users():
+    with open('leaderboard.txt', 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            users.append(str_to_usr(line))
+        f.close()
+
+def str_to_usr(userstr):
+    data = userstr.split(';*|')
+    u = User(data[0])
+    u.update_high_scores(int(data[1]), 1)
+    u.update_high_scores(int(data[2]), 2)
+    u.update_high_scores(int(data[3]), 3)
+    return u
 
 def main():
     clock = py.time.Clock()
     start = True
     scolor = py.Color("gray")
     qcolor = py.Color("gray")
+    update_users()
     while start:      
 
         title_text = font.render('Fi_l In Th_ Bl_nk', True, py.Color("black"))
@@ -148,7 +160,7 @@ def name_input():
                 else:
                     active = False
                 if scolor == py.Color("light gray") and len(user_text) > 0:
-                    level_select(user_text)
+                    level_select(user_text.upper())
                     start = False
                     continue
         if active:
@@ -158,7 +170,7 @@ def name_input():
 
         screen.fill(py.Color("white"))
         py.draw.rect(screen, color, input_rect)
-        name_text = base_font.render(user_text, True, py.Color("black"))
+        name_text = base_font.render(user_text.upper(), True, py.Color("black"))
         name_rect = name_text.get_rect()
         name_rect.center = (width // 2, height // 2)
         screen.blit(name_text, name_rect)
@@ -403,6 +415,20 @@ def end(score, level, username):
     clock = py.time.Clock()
     start = True
     scolor = py.Color("gray")
+    with open(f'leaderboard.txt', 'a') as f:
+        u = User(username)
+        if u not in users:
+            u.update_high_scores(score, level)
+            users.append(u)
+            f.write(users[-1].get_highscores() + '\n')
+        else:
+            f.truncate(0)
+            for i in users:
+                if i == u:
+                    i.update_high_scores(score, level)
+                f.write(i.get_highscores() + '\n')
+        f.close()
+
     while start:
         score_text = font.render("Your final score was", True, py.Color("black"))
         scoretx_rect = score_text.get_rect()

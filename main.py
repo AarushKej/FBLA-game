@@ -1,8 +1,8 @@
 import pygame as py
-import random
 from random import randint
 import time
 from user import User
+import random
 
 py.init()
 dimensions = (width, height) = (700, 700)
@@ -12,11 +12,11 @@ ifont = py.font.Font('ARCADE_N.ttf', 10)
 users = []
 
 global bgs 
-bgs = ['/Users/aarushkejriwal/FBLA-game/Screen Shot 2023-01-13 at 4.54.36 PM.jpeg', 
-'/Users/aarushkejriwal/FBLA-game/Screen Shot 2023-01-14 at 8.57.18 PM.jpeg',
-'/Users/aarushkejriwal/FBLA-game/Screen Shot 2023-01-14 at 9.24.31 PM.jpeg',
-'/Users/aarushkejriwal/FBLA-game/Screenshot 2023-01-14 at 9.43.48 PM.png',
-'/Users/aarushkejriwal/FBLA-game/beach.jpeg']
+bgs = ['/Users/Vishva/Documents/VSCode/Python/FBLA/space.png', 
+'/Users/Vishva/Documents/VSCode/Python/FBLA/sky.png',
+'/Users/Vishva/Documents/VSCode/Python/FBLA/forest.png',
+'/Users/Vishva/Documents/VSCode/Python/FBLA/night.jpeg',
+'/Users/Vishva/Documents/VSCode/Python/FBLA/beach.png']
 txt_colors = [py.Color("white"), py.Color("black"), py.Color("gray"), py.Color("white"), py.Color("black")]
 button_txt_colors = [py.Color("black"), py.Color("black"), py.Color("black"), py.Color("black"), py.Color("black")]
 pcolors = [py.Color("salmon"), (245, 217, 59), (245, 217, 59), py.Color("salmon"), (245, 217, 59)]
@@ -815,6 +815,9 @@ def game(level, username):
                             plus_five = True
                         power_up = None
                         has_power = False
+                    elif event.key == py.K_ESCAPE:
+                        play = False
+                        exit()
                         
             except ValueError:
                 continue
@@ -825,10 +828,13 @@ def game(level, username):
             if target_time >= 60: target_time -= 60
             tmp_power_up = random.randint(0,3)
             while int(time.ctime()[17:19]) != target_time:
+                cmessage_text = font.render("Great Job!", True, green)
                 correct_text = font.render(f'{correct_word}', True, green)
                 message_text = font.render(f'was correct: +{points_gained}', True, txt_color)
+                cmessage_rect = cmessage_text.get_rect()
                 correct_rect = correct_text.get_rect()
                 message_rect = message_text.get_rect()
+                cmessage_rect.center = (width // 2, height // 3)
                 correct_rect.center = (width // 2, height // 2)
                 message_rect.center = (width // 2, height // 2 + 34)
                 screen.fill(txt_color)
@@ -843,10 +849,10 @@ def game(level, username):
                     power_rect = power_text.get_rect();
                     power_rect.center = (width // 2, ((height // 3) * 2) + 34)
                     draw_screen(screen, [[correct_text, correct_rect], [message_text, message_rect], 
-                    [power_text, power_rect], [power_header, header_rect]])
+                    [power_text, power_rect], [power_header, header_rect], [cmessage_text, cmessage_rect]])
                     has_power = True
                 else:
-                    draw_screen(screen, [[correct_text, correct_rect], [message_text, message_rect]])
+                    draw_screen(screen, [[correct_text, correct_rect], [message_text, message_rect], [cmessage_text, cmessage_rect]])
                 py.display.flip()
                 py.display.update()
                 clock.tick(60)
@@ -963,3 +969,4 @@ def end(score, level, username):
 
 if __name__ == "__main__":
     main()
+

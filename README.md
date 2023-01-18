@@ -1,8 +1,4 @@
-# FBLA-game
-
-Time Crunch
-
-How To Play Time Crunch
+# Time Crunch
 
 The goal of the game is to guess a word with in a time limit and a certain number of letters guessed
 

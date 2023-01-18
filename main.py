@@ -12,11 +12,11 @@ ifont = py.font.Font('ARCADE_N.ttf', 10)
 users = []
 
 global bgs 
-bgs = ['/Users/Vishva/Documents/VSCode/Python/FBLA/space.png', 
-'/Users/Vishva/Documents/VSCode/Python/FBLA/sky.png',
-'/Users/Vishva/Documents/VSCode/Python/FBLA/forest.png',
-'/Users/Vishva/Documents/VSCode/Python/FBLA/night.jpeg',
-'/Users/Vishva/Documents/VSCode/Python/FBLA/beach.png']
+bgs = ['bg/space.png', 
+'bg/sky.png',
+'bg/forest.png',
+'bg/night.jpeg',
+'bg/beach.png']
 txt_colors = [py.Color("white"), py.Color("black"), py.Color("gray"), py.Color("white"), py.Color("black")]
 button_txt_colors = [py.Color("black"), py.Color("black"), py.Color("black"), py.Color("black"), py.Color("black")]
 pcolors = [py.Color("salmon"), (245, 217, 59), (245, 217, 59), py.Color("salmon"), (245, 217, 59)]
@@ -969,4 +969,3 @@ def end(score, level, username):
 
 if __name__ == "__main__":
     main()
-

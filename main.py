@@ -1,16 +1,17 @@
-import pygame as py
+import pygame as py # Importing pygame library
 from random import randint
 import time
 from user import User
 import random
 
 py.init()
-dimensions = (width, height) = (700, 700)
+dimensions = (width, height) = (700, 700) # Sets the dimension for the window and background images
 screen = py.display.set_mode(dimensions)
-font = py.font.Font('ARCADE_N.ttf', 32)
+font = py.font.Font('ARCADE_N.ttf', 32) # Creates a variable to render text font throughout the script
 ifont = py.font.Font('ARCADE_N.ttf', 10)
-users = []
+users = [] # Empty variable to store all existing players
 
+# Creates variables for various backgrounds and text colors
 global bgs 
 bgs = ['bg/space.png', 
 'bg/sky.png',
@@ -27,6 +28,9 @@ index = 0
 
 
 def change_themes(index):
+    '''
+    Allows for easy change between themes.
+    '''
     global bg_path 
     bg_path = bgs[index]
     global txt_color
@@ -45,13 +49,19 @@ def change_themes(index):
 change_themes(index)
 
 def update_users():
+    '''
+    Updates the users variable with the existing users inside leaderboard.txt
+    '''
     with open('leaderboard.txt', 'r') as f:
         lines = f.readlines()
         for line in lines:
-            users.append(str_to_usr(line))
+            users.append(str_to_usr(line)) # converts the string value of the txt file into a User object
         f.close()
 
 def str_to_usr(userstr):
+    '''
+    converts the string value of the txt file into a User object
+    '''
     data = userstr.split(';*|')
     u = User(data[0])
     try:
@@ -63,19 +73,26 @@ def str_to_usr(userstr):
         return None
 
 def usr_to_str(user: User):
+    '''
+    Converts a User object into a string to be written onto leaderboard.txt
+    '''
     return user.name + ";*|" + str(user.es) + ";*|" + str(user.ms) + ";*|" + str(user.hs)
 
 def main():
-    clock = py.time.Clock()
+    '''
+    Main menu
+    '''
+    clock = py.time.Clock() # Ensures that the game runs at a consitent frame rate
     start = True
-    scolor = primary_color
+    scolor = primary_color # Setting the colors for the buttons
     qcolor = primary_color
     lcolor = primary_color
     tcolor = primary_color
     icolor = primary_color
     update_users()
     while start:      
-
+        
+        # Adding GUI elements such as text and buttons
         title_text = font.render('TIME CRUNCH', True, txt_color)
         textRect = title_text.get_rect()
         textRect.center = (width // 2, height // 10)
@@ -119,6 +136,7 @@ def main():
                 exit()
             elif event.type == py.MOUSEMOTION:
                 mpos = py.mouse.get_pos()
+                # Making the button change color when it is hovered over
                 if start_button.collidepoint(mpos): 
                     scolor = secondary_color 
                 else:
@@ -140,6 +158,7 @@ def main():
                 else:
                     icolor = primary_color
             elif event.type == py.MOUSEBUTTONDOWN:
+                # Adding functionality to the buttons when they are clicked
                 if scolor == secondary_color:
                     name_input()
                     start = False
@@ -157,7 +176,9 @@ def main():
                 elif icolor == secondary_color:
                     instructions()
                     start = False
-        img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
+                    
+        # Draws everything on the window
+        img = py.transform.scale(py.image.load(bg_path).convert(), (width, height)) # background image
         screen.blit(img, (0, 0))
         screen.blit(title_text, textRect)
         py.draw.rect(screen, scolor, start_button)
@@ -175,8 +196,11 @@ def main():
         clock.tick(60)
 
 def instructions():
+    '''
+    Instructions tab to inform the user on the rules of the game
+    '''
     clock = py.time.Clock()
-
+    
     bcolor = primary_color
     btext = font.render("BACK", True, button_txt_color)
     brect = btext.get_rect()
@@ -263,8 +287,12 @@ def instructions():
         clock.tick(60)
 
 def theme_select():
+    '''
+    THEME SELECT tab
+    Allows the user to switch themes
+    '''
     clock = py.time.Clock()
-    theme = 0
+    theme = 0 # Variable to keep track of the current theme
     running = True
     scolor = primary_color
     while running: 
@@ -274,17 +302,17 @@ def theme_select():
                 if event.key == py.K_ESCAPE:
                     running = False
                     break
-                elif event.key == py.K_RIGHT:
+                elif event.key == py.K_RIGHT: # Switches theme when Arrow keys are pressed
                     theme += 1
                     if theme > len(bgs) - 1:
                         theme = 0
-                    change_themes(theme)
+                    change_themes(theme) # Sets the theme
                     scolor = primary_color
                 elif event.key == py.K_LEFT:
                     theme -= 1
                     if theme < 0:
                         theme = len(bgs) - 1
-                    change_themes(theme)
+                    change_themes(theme) # Sets the theme
             elif event.type == py.QUIT:
                 exit()
             elif event.type == py.MOUSEMOTION:
@@ -326,10 +354,16 @@ def theme_select():
         clock.tick(60)
 
 def pick_word(words):
+    '''
+    Picks a random word from a given list and formats it
+    '''
     word = words[randint(0, len(words)-1)].split('\n')[0]
     return word.split('\n')[0], len(word)
 
 def return_blank_word(word, letters_guessed):
+    '''
+    Returns a word with the letters guessed showing and the rest blank
+    '''
     returnval = ""
     for c in word:
         if c in letters_guessed:
@@ -338,6 +372,9 @@ def return_blank_word(word, letters_guessed):
     return returnval
 
 def return_guessed_letters(letters_guessed, correct_letters):
+    '''
+    Returns the string of incorrect letters
+    '''
     returnval = ""
     for letter in letters_guessed:
         if letter not in correct_letters:
@@ -345,16 +382,25 @@ def return_guessed_letters(letters_guessed, correct_letters):
     return returnval
 
 def select_new_word(word, words):
+    '''
+    selects a new word from the list and ensures that users will not encounter the same word twice in one round
+    '''
     word += '\n'
     words.remove(word)
     w, l = pick_word(words)
     return w, l, [], [], words
 
 def draw_screen(screen, objects):
+    '''
+    Draws all objects passed onto the window
+    '''
     for obj in objects:
         screen.blit(obj[0], obj[1])
     
 def name_input():
+    '''
+    Prompts the user to input the username they would like to be identified as. This is used for the leaderboard
+    '''
     clock = py.time.Clock()
     start = True
     scolor = primary_color
@@ -392,12 +438,12 @@ def name_input():
                     start = False
                     break
                 elif event.key == py.K_RETURN:
-                    level_select(user_text.upper())
+                    level_select(user_text.upper()) # Makes sure that all names are uppercase
                     start = False
                     continue
                 elif event.key == py.K_BACKSPACE:
                     user_text = user_text[:-1]
-                elif len(user_text) < 10 and event.unicode.isalpha():
+                elif len(user_text) < 10 and event.unicode.isalpha(): # Ensures that the user only inputs alpha characters
                     user_text += event.unicode
                 
             elif event.type == py.QUIT:
@@ -450,6 +496,9 @@ def name_input():
         clock.tick(60)
 
 def level_select(username):
+    '''
+    This function is used for the level select tab before the round and before the leaderboard tab
+    '''
     clock = py.time.Clock()
     start = True
     ecolor = primary_color
@@ -555,6 +604,9 @@ def level_select(username):
         clock.tick(60)
 
 def format_score(usr: User, level: int):
+    '''
+    Used to aquire the proper format for leaderboard given a User and difficulty level
+    '''
     if level == 1: score = usr.es
     elif level == 2: score = usr.ms
     else: score = usr.hs
@@ -570,9 +622,13 @@ def format_score(usr: User, level: int):
     return string
 
 def leader_boards(level):
+    '''
+    Displays the leaderboards with the top 5 players and their respective scores
+    '''
     clock = py.time.Clock()
     running = True
     try:
+        # Determines the top 5 players
         with open('leaderboard.txt', 'r') as f:
             stats = f.readlines()
             leader_board = []
@@ -600,6 +656,7 @@ def leader_boards(level):
         heading_rect.center = (width // 2, height // 3)
 
         leader_board_text = []
+        # Displays the formatted strings
         for usr in range(len(leader_board[:5])):
             text = font.render(format_score(leader_board[usr], level), True, txt_color)
             rect = text.get_rect()
@@ -654,17 +711,21 @@ def leader_boards(level):
         exit()
 
 def game(level, username):
+    '''
+    The main Game
+    '''
     has_power = False
-    power_ups = {0: "Reveal One Letter", 1: "Freeze Time", 2: "+3 guesses", 3: "+5 guesses"}
-    power_up = None
+    power_ups = {0: "Reveal One Letter", 1: "Freeze Time", 2: "+3 guesses", 3: "+5 guesses"} # Dictionary to choose Power-ups
+    power_up = None # Variable to keep track of what power-up the user has
     counter = 0
     clock = py.time.Clock()
     play = True
     with open("words.txt", 'r') as f:
-        words = f.readlines()
+        words = f.readlines() # Aquires the list of words
         f.close()
     word, _= pick_word(words)
-    score = 0
+    score = 0 # keeps track of player score
+    # Sets the variables per level (Time, Word-length, and guesses)
     if level == 1:
         guesstime = 30
         buffer = 3
@@ -686,13 +747,14 @@ def game(level, username):
     target_tm = tm + guesstime
     temp_tm = target_tm
     if target_tm >= 60: target_tm -= 60
+    # Keep track of which power-up is active
     freeze_time = False
     plus_three = False
     plus_five = False
     while play:
         if freeze_time:
             target_tm = None
-        if int(time.ctime()[17:19]) == target_tm:
+        if int(time.ctime()[17:19]) == target_tm: # Checks if the player has run out of time
             incorrect_word = word.upper()
             incorrect = True
             word, length, letters_used, correct_letters_guessed, words = select_new_word(word, words)
@@ -729,7 +791,7 @@ def game(level, username):
         clock_rect.center = (width // 2, height * 0.1)
         points_gained = 0
 
-        if len(word) != word_length:
+        if len(word) != word_length: # Ensures that the user is given a word with an appropriate length according to the difficuly level
             words.remove(word + '\n')
             word, length = pick_word(words)
 
@@ -821,7 +883,7 @@ def game(level, username):
                         
             except ValueError:
                 continue
-        
+        # Change screen to cut-screen if the player is correct
         if correct:
             t = int(time.ctime()[17:19])
             target_time = t + 3
@@ -864,7 +926,7 @@ def game(level, username):
                 num_guesses -= 5
                 plus_five = False
             continue
-        elif incorrect:
+        elif incorrect: # changes screen to appropriate screen if the player guesses the word incorrectly
             t = int(time.ctime()[17:19])
             target_time = t + 3
             if target_time >= 60: target_time -= 60
@@ -899,6 +961,9 @@ def game(level, username):
     end(score, level, username)
 
 def end(score, level, username):
+    '''
+    Final screen that displays the users final score and stores it in leaderboard.txt along with their username
+    '''
     clock = py.time.Clock()
     start = True
     scolor = primary_color

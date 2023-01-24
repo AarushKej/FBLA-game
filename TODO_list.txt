@@ -1,0 +1,15 @@
+Add more power-ups.
+Power-ups to add: Add time, Skip Word, Double Points, Immunity, Jeopardy
+Add probabilty into specific power-ups
+Make power-ups more interactive
+**Specific icons for each power-up
+
+Add sound-effects, music
+
+Create backgrounds
+
+Add game and text animations
+
+Unlockable themes sound-effects
+
+Database

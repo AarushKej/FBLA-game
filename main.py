@@ -1,17 +1,24 @@
-import pygame as py # Importing pygame library
+import pygame as py
 from random import randint
 import time
-from user import User
 import random
+from _thread import start_new_thread
+
+'''
+BUGS TO FIX
+I can use a guess when I am on the screen after a correct word
+Leaderboard duplicates.
+BG music plays once
+'''
 
 py.init()
-dimensions = (width, height) = (700, 700) # Sets the dimension for the window and background images
+dimensions = (width, height) = (700, 700)
 screen = py.display.set_mode(dimensions)
-font = py.font.Font('ARCADE_N.ttf', 32) # Creates a variable to render text font throughout the script
+font = py.font.Font('ARCADE_N.ttf', 32)
+bfont = py.font.Font('ARCADE_N.ttf', 38)
 ifont = py.font.Font('ARCADE_N.ttf', 10)
-users = [] # Empty variable to store all existing players
+users = []
 
-# Creates variables for various backgrounds and text colors
 global bgs 
 bgs = ['bg/space.png', 
 'bg/sky.png',
@@ -25,12 +32,42 @@ scolors = [py.Color("light salmon"), (250, 230, 122), (250, 230, 122), py.Color(
 freeze_colors = [py.Color("light blue"), py.Color("dark blue"), py.Color("light blue"), py.Color("light blue"), py.Color("dark blue")]
 greens = [py.Color("green"), py.Color("dark green"), py.Color("green"), py.Color("green"), py.Color("dark green")]
 index = 0
+py.mixer.init()
 
+class User():
+    def __init__(self, name):
+        self.name = name
+        self.es = 0
+        self.ms = 0
+        self.hs = 0
+    
+    def update_high_scores(self, score, level):
+        if level == 1 and score > self.es: self.es = score
+        elif level == 2 and score > self.ms: self.ms = score
+        elif score > self.hs: self.hs = score
+    
+    def get_highscores(self):
+        return f'{self.name};*|{self.es};*|{self.ms};*|{self.hs}'
+
+    def __eq__(self, __o: object) -> bool:
+        return self.name == __o.name
+
+def text_animation(text, font, color, start_time):
+    elapsed_time = time.time() - start_time
+    chars_to_display = int(elapsed_time * 30)
+    screen_text = font.render(text[:chars_to_display], 1, color)
+    status = len(text) == len(text[:chars_to_display])
+    return screen_text, status
+
+def play_bg_music(filename):
+    sound = py.mixer.Sound('sounds/' + filename)
+    sound.set_volume(0.3)
+    py.mixer.Channel(0).play(sound)
+
+def play_effect(filename):
+    py.mixer.Channel(1).play(py.mixer.Sound('sounds/' + filename))
 
 def change_themes(index):
-    '''
-    Allows for easy change between themes.
-    '''
     global bg_path 
     bg_path = bgs[index]
     global txt_color
@@ -46,22 +83,14 @@ def change_themes(index):
     global green
     green = greens[index]
 
-change_themes(index)
-
 def update_users():
-    '''
-    Updates the users variable with the existing users inside leaderboard.txt
-    '''
     with open('leaderboard.txt', 'r') as f:
         lines = f.readlines()
         for line in lines:
-            users.append(str_to_usr(line)) # converts the string value of the txt file into a User object
+            users.append(str_to_usr(line))
         f.close()
 
 def str_to_usr(userstr):
-    '''
-    converts the string value of the txt file into a User object
-    '''
     data = userstr.split(';*|')
     u = User(data[0])
     try:
@@ -73,119 +102,100 @@ def str_to_usr(userstr):
         return None
 
 def usr_to_str(user: User):
-    '''
-    Converts a User object into a string to be written onto leaderboard.txt
-    '''
     return user.name + ";*|" + str(user.es) + ";*|" + str(user.ms) + ";*|" + str(user.hs)
 
 def main():
-    '''
-    Main menu
-    '''
-    clock = py.time.Clock() # Ensures that the game runs at a consitent frame rate
+    clock = py.time.Clock()
     start = True
-    scolor = primary_color # Setting the colors for the buttons
-    qcolor = primary_color
-    lcolor = primary_color
-    tcolor = primary_color
-    icolor = primary_color
     update_users()
+    selection = 0
+    prev_selection = None
+    selections = {0: True, 1: False, 2: False, 3: False, 4: False}
     while start:      
-        
-        # Adding GUI elements such as text and buttons
+
         title_text = font.render('TIME CRUNCH', True, txt_color)
         textRect = title_text.get_rect()
         textRect.center = (width // 2, height // 10)
 
-        start_text = font.render('START', True, button_txt_color)
+        if selections[0]:
+            start_text = bfont.render('|START|', True, py.Color("white"))
+        else:
+            start_text = font.render('START', True, py.Color("gray"))
         stextrect = start_text.get_rect()
         stextrect.center = (width // 2, height // 4)
-        start_button = py.Rect(0, 0, 200, 60)
-        start_button.center = (width // 2, height // 4)
 
-        lb_text = font.render('LEADERBOARD', True, button_txt_color)
+        if selections[1]:
+            lb_text = bfont.render('|LEADERBOARD|', True, py.Color("white"))
+        else:
+            lb_text = font.render('LEADERBOARD', True, py.Color("gray"))
         lbtextrect = lb_text.get_rect()
         lbtextrect.center = (width // 2, height // 2.6)
-        lb_button = py.Rect(0, 0, 400, 60)
-        lb_button.center = (width // 2, height // 2.6)
 
-        theme_text = font.render('CHANGE THEME', True, button_txt_color)
+        if selections[2]:
+            theme_text = bfont.render('|CHANGE THEME|', True, py.Color("white"))
+        else:
+            theme_text = font.render('CHANGE THEME', True, py.Color("gray"))
         theme_text_rect = theme_text.get_rect()
         theme_text_rect.center = (width // 2, height // 1.9)
-        theme_button = py.Rect(0, 0, 400, 60)
-        theme_button.center = (width // 2, height // 1.9)
 
-        i_text = font.render('INSTRUCTIONS', True, button_txt_color)
+        if selections[3]:
+            i_text = bfont.render('|INSTRUCTIONS|', True, py.Color("white"))
+        else:
+            i_text = font.render('INSTRUCTIONS', True, py.Color("gray"))
         i_rect = i_text.get_rect()
         i_rect.center = (width // 2, height // 1.45)
-        i_button = py.Rect(0, 0, 400, 60)
-        i_button.center = (width // 2, height // 1.45)
 
-        quit_text = font.render('QUIT', True, button_txt_color)
+        if selections[4]:
+            quit_text = bfont.render('|QUIT|', True, py.Color("white"))
+        else:
+            quit_text = font.render('QUIT', True, py.Color("gray"))
         qtextrect = quit_text.get_rect()
         qtextrect.center = (width // 2, height // 1.2)
-        quit_button = py.Rect(0, 0, 200, 60)
-        quit_button.center = (width // 2, height // 1.2)
 
         for event in py.event.get():
             if event.type == py.KEYDOWN:
                 if event.key == py.K_ESCAPE:
                     start = False
                     break
+                elif event.key == py.K_UP:
+                    prev_selection = selection
+                    selection -= 1
+                    if selection < 0:
+                        selection = len(selections) - 1
+                    selections[prev_selection] = False
+                    selections[selection] = True
+                    play_effect('cycle.wav')
+                elif event.key == py.K_DOWN:
+                    prev_selection = selection
+                    selection += 1
+                    if selection >= len(selections):
+                        selection = 0
+                    selections[prev_selection] = False
+                    selections[selection] = True
+                    play_effect('cycle.wav')
+                elif event.key == py.K_RETURN:
+                    play_effect('select.wav')
+                    if selection == 0:
+                        name_input()
+                        start = False
+                        continue
+                    elif selection == 1:
+                        level_select(None)
+                        start = False
+                    elif selection == 2:
+                        theme_select()
+                        start = False
+                    elif selection == 3:
+                        instructions()
+                        start = False
+                    elif selection == 4:
+                        start = False
+                        exit()
             elif event.type == py.QUIT:
                 exit()
-            elif event.type == py.MOUSEMOTION:
-                mpos = py.mouse.get_pos()
-                # Making the button change color when it is hovered over
-                if start_button.collidepoint(mpos): 
-                    scolor = secondary_color 
-                else:
-                    scolor = primary_color
-                if quit_button.collidepoint(mpos):
-                    qcolor = secondary_color
-                else:
-                    qcolor = primary_color
-                if lb_button.collidepoint(mpos):
-                    lcolor = secondary_color
-                else:
-                    lcolor = primary_color
-                if theme_button.collidepoint(mpos):
-                    tcolor = secondary_color
-                else:
-                    tcolor = primary_color
-                if i_button.collidepoint(mpos):
-                    icolor = secondary_color
-                else:
-                    icolor = primary_color
-            elif event.type == py.MOUSEBUTTONDOWN:
-                # Adding functionality to the buttons when they are clicked
-                if scolor == secondary_color:
-                    name_input()
-                    start = False
-                    continue
-                elif qcolor == secondary_color:
-                    start = False
-                    exit()
-                    break
-                elif lcolor == secondary_color:
-                    level_select(None)
-                    start = False
-                elif tcolor == secondary_color:
-                    theme_select()
-                    start = False
-                elif icolor == secondary_color:
-                    instructions()
-                    start = False
-                    
-        # Draws everything on the window
-        img = py.transform.scale(py.image.load(bg_path).convert(), (width, height)) # background image
+        img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
         screen.blit(img, (0, 0))
         screen.blit(title_text, textRect)
-        py.draw.rect(screen, scolor, start_button)
-        py.draw.rect(screen, qcolor, quit_button)
-        py.draw.rect(screen, lcolor, lb_button)
-        py.draw.rect(screen, tcolor, theme_button)
-        py.draw.rect(screen, icolor, i_button)
         screen.blit(start_text, stextrect)
         screen.blit(quit_text, qtextrect)
         screen.blit(lb_text, lbtextrect)
@@ -196,105 +206,109 @@ def main():
         clock.tick(60)
 
 def instructions():
-    '''
-    Instructions tab to inform the user on the rules of the game
-    '''
     clock = py.time.Clock()
-    
-    bcolor = primary_color
-    btext = font.render("BACK", True, button_txt_color)
+
+    btext = font.render("Press ENTER to Return", True, txt_color)
     brect = btext.get_rect()
     brect.center = (width // 2, height * 0.9)
-    bbutton = py.Rect(0, 0, 200, 60)
-    bbutton.center = (width // 2, height * 0.9)
 
     title = font.render("How To Play", True, txt_color)
     title_rect = title.get_rect()
     title_rect.center = (width // 2, height // 8)
 
-    i1 = ifont.render("The goal of the game is to guess as many words as you can", True, txt_color)
-    i1_rect = i1.get_rect()
-    i1_rect.center = (width // 2, height // 3)
-
-    i2 = ifont.render("with a time constraint and a limit on guesses. There are", True, txt_color)
-    i2_rect = i2.get_rect()
-    i2_rect.center = (width // 2, (height // 3) + 20)
-
-    i3 = ifont.render("3 levels, easy, medium, and hard easy mode has you guess", True, txt_color)
-    i3_rect = i3.get_rect()
-    i3_rect.center = (width // 2, (height // 3) + 40)
-
-    i4 = ifont.render("a 4 letter word with 30 seconds and 12 letter guesses, medium", True, txt_color)
-    i4_rect = i4.get_rect()
-    i4_rect.center = (width // 2, (height // 3) + 60)
-
-    i5 = ifont.render("mode has you guess a 5 letter word with 25 seconds and 10", True, txt_color)
-    i5_rect = i5.get_rect()
-    i5_rect.center = (width // 2, (height // 3) + 80)
-
-    i6 = ifont.render("letter guesses hard mode has you guess a 6 letter word", True, txt_color)
-    i6_rect = i6.get_rect()
-    i6_rect.center = (width // 2, (height // 3) + 100)
-
-    i7 = ifont.render("with 20 seconds and eight letter guesses. You get 10 points", True, txt_color)
-    i7_rect = i7.get_rect()
-    i7_rect.center = (width // 2, (height // 3) + 120)
-
-    i8 = ifont.render("for every letter guessed correctly and one point is taken", True, txt_color)
-    i8_rect = i8.get_rect()
-    i8_rect.center = (width // 2, (height // 3) + 140)
-
-    i9 = ifont.render("away for every letter guesed incorrectly. Every 3 turns you will", True, txt_color)
-    i9_rect = i9.get_rect()
-    i9_rect.center = (width // 2, (height // 3) + 160)
-
-    i10 = ifont.render("get a random power up which can be freeze time, reveal one letter,", True, txt_color)
-    i10_rect = i10.get_rect()
-    i10_rect.center = (width // 2, (height // 3) + 180)
-
-    i11 = ifont.render("3 extra guesses, or 5 extra guesses. Powerups do not stack up", True, txt_color)
-    i11_rect = i11.get_rect()
-    i11_rect.center = (width // 2, (height // 3) + 200)
-
+    s1 = s2 = s3 = s4 = s5 = s6 = s7 = s8 = s9 = s10 = s11 = None
+    st1 = st2 = st3 = st4 = st5 = st6 = st7 = st8 = st9 = st10 = False
     running = True
     while running:
+        texts = [[btext, brect], [title, title_rect]]
         for event in py.event.get():
             if event.type == py.KEYDOWN:
                 if event.key == py.K_ESCAPE:
                     running = False
                     break
+                elif event.key == py.K_RETURN:
+                    play_effect('select.wav')
+                    main()
+                    exit()
             elif event.type == py.QUIT:
                 exit()
-            elif event.type == py.MOUSEMOTION:
-                mpos = py.mouse.get_pos()
-                if bbutton.collidepoint(mpos): 
-                    bcolor = secondary_color 
-                else:
-                    bcolor = primary_color
-            elif event.type == py.MOUSEBUTTONDOWN:
-                if bcolor == secondary_color:
-                    main()
-                    running = False
-                    continue
-
+        if s1 == None:
+            s1 = time.time()
+        else:
+            i1, st1 = text_animation("The goal of the game is to guess as many words as you can", ifont, txt_color, s1)
+            i1_rect = (40, height // 3)
+            texts.append([i1, i1_rect])
+        if st1 and s2 == None:
+            s2 = time.time()
+        elif st1:
+            i2, st2 = text_animation("with a time constraint and a limit on guesses. There are", ifont, txt_color, s2)
+            i2_rect = (40, (height // 3) + 20)
+            texts.append([i2, i2_rect])
+        if st2 and s3 == None:
+            s3 = time.time()
+        elif st2:
+            i3, st3 = text_animation("3 levels, easy, medium, and hard easy mode has you guess", ifont, txt_color, s3)
+            i3_rect = (40, (height // 3) + 40)
+            texts.append([i3, i3_rect])
+        if st3 and s4 == None:
+            s4 = time.time()
+        elif st3:
+            i4, st4 = text_animation("a 4 letter word with 30 seconds and 12 letter guesses, medium", ifont, txt_color, s4)
+            i4_rect = (40, (height // 3) + 60)
+            texts.append([i4, i4_rect])
+        if st4 and s5 == None:
+            s5 = time.time()
+        elif st4:
+            i5, st5 = text_animation("mode has you guess a 5 letter word with 25 seconds and 10", ifont, txt_color, s5)
+            i5_rect = (40, (height // 3) + 80)
+            texts.append([i5, i5_rect])
+        if st5 and s6 == None:
+            s6 = time.time()
+        elif st5:
+            i6, st6 = text_animation("letter guesses hard mode has you guess a 6 letter word", ifont, txt_color, s6)
+            i6_rect = (40, (height // 3) + 100)
+            texts.append([i6, i6_rect])
+        if st6 and s7 == None:
+            s7 = time.time()
+        elif st6:
+            i7, st7 = text_animation("with 20 seconds and eight letter guesses. You get 10 points", ifont, txt_color, s7)
+            i7_rect = (40, (height // 3) + 120)
+            texts.append([i7, i7_rect])
+        if st7 and s8 == None:
+            s8 = time.time()
+        elif st7:
+            i8, st8 = text_animation("for every letter guessed correctly and one point is taken", ifont, txt_color, s8)
+            i8_rect = (40, (height // 3) + 140)
+            texts.append([i8, i8_rect])
+        if st8 and s9 == None:
+            s9 = time.time()
+        elif st8:
+            i9, st9 = text_animation("away for every letter guesed incorrectly. Every 3 turns you will", ifont, txt_color, s9)
+            i9_rect = (40, (height // 3) + 160)
+            texts.append([i9, i9_rect])
+        if st9 and s10 == None:
+            s10 = time.time()
+        elif st9:
+            i10, st10 = text_animation("get a random power up which can be freeze time, reveal one letter,", ifont, txt_color, s10)
+            i10_rect = (40, (height // 3) + 180)
+            texts.append([i10, i10_rect])
+        if st10 and s11 == None:
+            s11 = time.time()
+        elif st10:
+            i11, _ = text_animation("3 extra guesses, or 5 extra guesses. Powerups do not stack up.", ifont, txt_color, s11)
+            i11_rect = (40, (height // 3) + 200)
+            texts.append([i11, i11_rect])
         img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
         screen.blit(img, (0, 0))
-        py.draw.rect(screen, bcolor, bbutton)
-        draw_screen(screen, [[i1, i1_rect], [i2, i2_rect], [i3, i3_rect], [i4, i4_rect], [i5, i5_rect], [btext, brect], 
-        [i6, i6_rect], [i7, i7_rect], [i8, i8_rect], [i9, i9_rect], [i10, i10_rect], [i11, i11_rect], [title, title_rect]])
+        draw_screen(screen, texts)
         py.display.flip()
         py.display.update()
         clock.tick(60)
 
 def theme_select():
-    '''
-    THEME SELECT tab
-    Allows the user to switch themes
-    '''
     clock = py.time.Clock()
-    theme = 0 # Variable to keep track of the current theme
+    theme = 0
     running = True
-    scolor = primary_color
     while running: 
 
         for event in py.event.get():
@@ -302,30 +316,26 @@ def theme_select():
                 if event.key == py.K_ESCAPE:
                     running = False
                     break
-                elif event.key == py.K_RIGHT: # Switches theme when Arrow keys are pressed
+                elif event.key == py.K_RIGHT:
+                    play_effect('cycle.wav')
                     theme += 1
                     if theme > len(bgs) - 1:
                         theme = 0
-                    change_themes(theme) # Sets the theme
+                    change_themes(theme)
                     scolor = primary_color
                 elif event.key == py.K_LEFT:
+                    play_effect('cycle.wav')
                     theme -= 1
                     if theme < 0:
                         theme = len(bgs) - 1
-                    change_themes(theme) # Sets the theme
-            elif event.type == py.QUIT:
-                exit()
-            elif event.type == py.MOUSEMOTION:
-                mpos = py.mouse.get_pos()
-                if sb.collidepoint(mpos): 
-                    scolor = secondary_color 
-                else:
-                    scolor = primary_color
-            elif event.type == py.MOUSEBUTTONDOWN:
-                if scolor == secondary_color:
+                    change_themes(theme)
+                elif event.key == py.K_RETURN:
+                    play_effect('select.wav')
                     main()
                     running = False
                     continue
+            elif event.type == py.QUIT:
+                exit()
         
         title_text = font.render("SELECT THEME", True, txt_color)
         title_rect = title_text.get_rect()
@@ -339,31 +349,22 @@ def theme_select():
         i2_rect = i2_text.get_rect()
         i2_rect.center = (width // 2, (height // 2) + 34)
 
-        s_text = font.render("SELECT", True, button_txt_color)
+        s_text = font.render("Press ENTER to select", True, txt_color)
         s_rect = s_text.get_rect()
         s_rect.center = (width // 2, (height // 5) * 4)
-        sb = py.Rect(0, 0, 200, 60)
-        sb.center = (width // 2, (height // 5) * 4)
 
         img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
         screen.blit(img, (0, 0))
-        py.draw.rect(screen, scolor, sb)
         draw_screen(screen, [[title_text, title_rect], [i1_text, i1_rect], [i2_text, i2_rect], [s_text, s_rect]])
         py.display.flip()
         py.display.update()
         clock.tick(60)
 
 def pick_word(words):
-    '''
-    Picks a random word from a given list and formats it
-    '''
     word = words[randint(0, len(words)-1)].split('\n')[0]
     return word.split('\n')[0], len(word)
 
 def return_blank_word(word, letters_guessed):
-    '''
-    Returns a word with the letters guessed showing and the rest blank
-    '''
     returnval = ""
     for c in word:
         if c in letters_guessed:
@@ -372,9 +373,6 @@ def return_blank_word(word, letters_guessed):
     return returnval
 
 def return_guessed_letters(letters_guessed, correct_letters):
-    '''
-    Returns the string of incorrect letters
-    '''
     returnval = ""
     for letter in letters_guessed:
         if letter not in correct_letters:
@@ -382,29 +380,18 @@ def return_guessed_letters(letters_guessed, correct_letters):
     return returnval
 
 def select_new_word(word, words):
-    '''
-    selects a new word from the list and ensures that users will not encounter the same word twice in one round
-    '''
     word += '\n'
     words.remove(word)
     w, l = pick_word(words)
     return w, l, [], [], words
 
 def draw_screen(screen, objects):
-    '''
-    Draws all objects passed onto the window
-    '''
     for obj in objects:
         screen.blit(obj[0], obj[1])
     
 def name_input():
-    '''
-    Prompts the user to input the username they would like to be identified as. This is used for the leaderboard
-    '''
     clock = py.time.Clock()
     start = True
-    scolor = primary_color
-    bcolor = primary_color
     user_text = ''
     input_rect = py.Rect(0, 0, 320, 35)
     input_rect.center = (width // 2, height // 3)
@@ -417,62 +404,50 @@ def name_input():
     title_rect.center = (width // 2, height * 0.15)
     
 
-    active = False
-    while start:      
+    active = True
 
-        start_text = font.render('START', True, button_txt_color)
+    selection = True
+
+    while start:      
+        if selection:
+            start_text = bfont.render('START', True, py.Color("white"))
+        else:
+            start_text = font.render('START', True, py.Color("gray"))
         stextrect = start_text.get_rect()
         stextrect.center = (width // 2, (height // 5) * 3)
-        start_button = py.Rect(0, 0, 200, 60)
-        start_button.center = (width // 2, (height // 5) * 3)
 
-        back_text = font.render('BACK', True, button_txt_color)
+        if not selection:
+            back_text = bfont.render('BACK', True, py.Color("white"))
+        else:
+            back_text = font.render('BACK', True, py.Color("gray"))
         back_rect = back_text.get_rect()
         back_rect.center = (width // 2, (height // 5) * 4)
-        back_button = py.Rect(0, 0, 200, 60)
-        back_button.center = (width // 2, (height // 5) * 4)
 
         for event in py.event.get():
             if event.type == py.KEYDOWN:
                 if event.key == py.K_ESCAPE:
                     start = False
                     break
-                elif event.key == py.K_RETURN:
-                    level_select(user_text.upper()) # Makes sure that all names are uppercase
+                elif event.key == py.K_RETURN and selection:
+                    play_effect('select.wav')
+                    level_select(user_text.upper())
                     start = False
                     continue
+                elif event.key == py.K_RETURN and not selection:
+                    play_effect('select.wav')
+                    main()
+                    exit()
+                elif event.key == py.K_UP or event.key == py.K_DOWN:
+                    play_effect('cycle.wav')
+                    selection = not selection
                 elif event.key == py.K_BACKSPACE:
                     user_text = user_text[:-1]
-                elif len(user_text) < 10 and event.unicode.isalpha(): # Ensures that the user only inputs alpha characters
+                elif len(user_text) < 10 and event.unicode.isalpha():
                     user_text += event.unicode
                 
             elif event.type == py.QUIT:
                 start = False
                 break
-            elif event.type == py.MOUSEMOTION:
-                mpos = py.mouse.get_pos()
-                if start_button.collidepoint(mpos): 
-                    scolor = secondary_color 
-                else:
-                    scolor = primary_color
-                if back_button.collidepoint(mpos):
-                    bcolor = secondary_color
-                else:
-                    bcolor = primary_color
-            elif event.type == py.MOUSEBUTTONDOWN:
-                if input_rect.collidepoint(event.pos):
-                    active = True
-                else:
-                    active = False
-                if scolor == secondary_color and len(user_text) > 0:
-                    level_select(user_text.upper())
-                    start = False
-                    continue
-                elif bcolor == secondary_color:
-                    main()
-                    exit()
-                    start = False
-                    continue
         if active:
             color = color_active
         else:
@@ -487,8 +462,6 @@ def name_input():
         name_rect.center = (width // 2, height // 3)
         screen.blit(name_text, name_rect)
         screen.blit(title_text, title_rect)
-        py.draw.rect(screen, scolor, start_button)
-        py.draw.rect(screen, bcolor, back_button)
         screen.blit(start_text, stextrect)
         screen.blit(back_text, back_rect)
         py.display.flip()
@@ -496,104 +469,98 @@ def name_input():
         clock.tick(60)
 
 def level_select(username):
-    '''
-    This function is used for the level select tab before the round and before the leaderboard tab
-    '''
     clock = py.time.Clock()
     start = True
-    ecolor = primary_color
-    mcolor = primary_color
-    hcolor = primary_color
-    bcolor = primary_color
+    selection = 0
+    prev_selection = None
+    selections = {0: True, 1: False, 2: False, 3: False}
     while start:
         lstext = font.render('Level Select', True, txt_color)
         lsrect = lstext.get_rect()
         lsrect.center = (width // 2, (height * 0.1))
-        easy_text = font.render('EASY', True, button_txt_color)
+
+        if selections[0]:
+            easy_text = bfont.render('EASY', True, py.Color("white"))
+        else:
+            easy_text = font.render('EASY', True, py.Color("grey"))
         easy_rect = easy_text.get_rect()
         easy_rect.center = (width // 2, (height // 5) * 1)
-        easy_button = py.Rect(0, 0, 200, 60)
-        easy_button.center = (width // 2, (height // 5) * 1)
 
-        medium_text = font.render('MEDIUM', True, button_txt_color)
+        if selections[1]:
+            medium_text = bfont.render('MEDIUM', True, py.Color("white"))
+        else:
+            medium_text = font.render('MEDIUM', True, py.Color("grey"))
         medium_rect = medium_text.get_rect()
         medium_rect.center = (width // 2, (height // 5) * 2)
-        medium_button = py.Rect(0, 0, 200, 60)
-        medium_button.center = (width // 2, (height // 5) * 2)
 
-        hard_text = font.render('HARD', True, button_txt_color)
+        if selections[2]:
+            hard_text = bfont.render('HARD', True, py.Color("white"))
+        else:
+            hard_text = font.render('HARD', True, py.Color("grey"))
         hard_rect = hard_text.get_rect()
         hard_rect.center = (width // 2, (height // 5) * 3)
-        hard_button = py.Rect(0, 0, 200, 60)
-        hard_button.center = (width // 2, (height // 5) * 3)
 
-        back_text = font.render('BACK', True, button_txt_color)
+        if selections[3]:
+            back_text = bfont.render('BACK', True, py.Color("white"))
+        else:
+            back_text = font.render('BACK', True, py.Color("grey"))
         back_rect = back_text.get_rect()
         back_rect.center = (width // 2, (height // 5) * 4)
-        back_button = py.Rect(0, 0, 200, 60)
-        back_button.center = (width // 2, (height // 5) * 4)
 
         for event in py.event.get():
                 if event.type == py.KEYDOWN:
                     if event.key == py.K_ESCAPE:
                         start = False
                         break
+                    elif event.key == py.K_UP:
+                        play_effect('cycle.wav')
+                        prev_selection = selection
+                        selection -= 1
+                        if selection < 0:
+                            selection = len(selections) - 1
+                        selections[prev_selection] = False
+                        selections[selection] = True
+                    elif event.key == py.K_DOWN:
+                        play_effect('cycle.wav')
+                        prev_selection = selection
+                        selection += 1
+                        if selection >= len(selections):
+                            selection = 0
+                        selections[prev_selection] = False
+                        selections[selection] = True
+                    elif event.key == py.K_RETURN:
+                        play_effect('select.wav')
+                        if selection == 0:
+                            if username == None:
+                                leader_boards(1)
+                            else:
+                                game(1, username)
+                            start = False
+                            continue
+                        elif selection == 1:
+                            if username == None:
+                                leader_boards(2)
+                            else:
+                                game(2, username)
+                            start = False
+                            continue
+                        elif selection == 2:
+                            if username == None:
+                                leader_boards(3)
+                            else:
+                                game(3, username)
+                            start = False
+                            continue
+                        elif selection == 3:
+                            main()
+                            exit()
                 elif event.type == py.QUIT:
                     start = False
                     break
-                elif event.type == py.MOUSEMOTION:
-                    mpos = py.mouse.get_pos()
-                    if easy_button.collidepoint(mpos): 
-                        ecolor = secondary_color 
-                    else:
-                        ecolor = primary_color
-                    if medium_button.collidepoint(mpos): 
-                        mcolor = secondary_color 
-                    else:
-                        mcolor = primary_color
-                    if hard_button.collidepoint(mpos): 
-                        hcolor = secondary_color 
-                    else:
-                        hcolor = primary_color
-                    if back_button.collidepoint(mpos):
-                        bcolor = secondary_color
-                    else:
-                        bcolor = primary_color
-                elif event.type == py.MOUSEBUTTONDOWN:
-                    if ecolor == secondary_color:
-                        if username == None:
-                            leader_boards(1)
-                        else:
-                            game(1, username)
-                        start = False
-                        continue
-                    elif mcolor == secondary_color:
-                        if username == None:
-                            leader_boards(2)
-                        else:
-                            game(2, username)
-                        start = False
-                        continue
-                    elif hcolor == secondary_color:
-                        if username == None:
-                            leader_boards(3)
-                        else:
-                            game(3, username)
-                        start = False
-                        continue
-                    elif bcolor == secondary_color:
-                        main()
-                        exit()
-                        start = False
-                        continue
 
         screen.fill(txt_color)
         img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
         screen.blit(img, (0, 0))
-        py.draw.rect(screen, ecolor, easy_button)
-        py.draw.rect(screen, mcolor, medium_button)
-        py.draw.rect(screen, hcolor, hard_button)
-        py.draw.rect(screen, bcolor, back_button)
         screen.blit(lstext, lsrect)
         screen.blit(easy_text, easy_rect)
         screen.blit(medium_text, medium_rect)
@@ -604,9 +571,6 @@ def level_select(username):
         clock.tick(60)
 
 def format_score(usr: User, level: int):
-    '''
-    Used to aquire the proper format for leaderboard given a User and difficulty level
-    '''
     if level == 1: score = usr.es
     elif level == 2: score = usr.ms
     else: score = usr.hs
@@ -622,13 +586,9 @@ def format_score(usr: User, level: int):
     return string
 
 def leader_boards(level):
-    '''
-    Displays the leaderboards with the top 5 players and their respective scores
-    '''
     clock = py.time.Clock()
     running = True
     try:
-        # Determines the top 5 players
         with open('leaderboard.txt', 'r') as f:
             stats = f.readlines()
             leader_board = []
@@ -656,50 +616,36 @@ def leader_boards(level):
         heading_rect.center = (width // 2, height // 3)
 
         leader_board_text = []
-        # Displays the formatted strings
         for usr in range(len(leader_board[:5])):
             text = font.render(format_score(leader_board[usr], level), True, txt_color)
             rect = text.get_rect()
             rect.center = (width // 2, (height // 11) * (4.75 + usr))
             leader_board_text.append([text, rect])
-        
-        bcolor = primary_color
-        back_text = font.render('BACK', True, button_txt_color)
+
+        back_text = font.render('Press ENTER to return', True, txt_color)
         back_rect = back_text.get_rect()
         back_rect.center = (width // 2, (height // 11) * 10)
-        back_button = py.Rect(0, 0, 200, 60)
-        back_button.center = (width // 2, (height // 11) * 10)
 
 
         format_score(leader_board[0], level)
 
         while running:
-            
             for event in py.event.get():
                 if event.type == py.KEYDOWN:
                         if event.key == py.K_ESCAPE:
                             running = False
                             break
+                        elif event.key == py.K_RETURN:
+                            play_effect('select.wav')
+                            main()
+                            exit()
                 elif event.type == py.QUIT:
                     running = False
                     break
-                elif event.type == py.MOUSEMOTION:
-                    mpos = py.mouse.get_pos()
-                    if back_button.collidepoint(mpos):
-                        bcolor = secondary_color
-                    else:
-                        bcolor = primary_color
-                elif event.type == py.MOUSEBUTTONDOWN:
-                    if bcolor == secondary_color:
-                        main()
-                        exit()
-                        running = False
-                        continue
 
             screen.fill(txt_color)
             img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
             screen.blit(img, (0, 0))
-            py.draw.rect(screen, bcolor, back_button)
             draw_screen(screen, [[title_text, title_rect], [heading_text, heading_rect], 
             [leader_board_text[0][0], leader_board_text [0][1]], [leader_board_text[1][0], leader_board_text[1][1]], [leader_board_text[2][0], leader_board_text[2][1]], 
             [leader_board_text[3][0], leader_board_text[3][1]], [leader_board_text[4][0], leader_board_text[4][1]], [back_text, back_rect]])
@@ -711,21 +657,18 @@ def leader_boards(level):
         exit()
 
 def game(level, username):
-    '''
-    The main Game
-    '''
     has_power = False
-    power_ups = {0: "Reveal One Letter", 1: "Freeze Time", 2: "+3 guesses", 3: "+5 guesses"} # Dictionary to choose Power-ups
-    power_up = None # Variable to keep track of what power-up the user has
+    power_ups = {0: "Reveal One Letter", 1: "Freeze Time", 2: "+3 Guesses", 3: "+5 Guesses", 4: "Double Points", 5: "Add 20 Seconds", 6: "Skip Word", 7: "Immunity", 8: "Jeopardy"}
+    power_up = None
+    temp_power_up = None
     counter = 0
     clock = py.time.Clock()
     play = True
     with open("words.txt", 'r') as f:
-        words = f.readlines() # Aquires the list of words
+        words = f.readlines()
         f.close()
     word, _= pick_word(words)
-    score = 0 # keeps track of player score
-    # Sets the variables per level (Time, Word-length, and guesses)
+    score = 0
     if level == 1:
         guesstime = 30
         buffer = 3
@@ -747,14 +690,25 @@ def game(level, username):
     target_tm = tm + guesstime
     temp_tm = target_tm
     if target_tm >= 60: target_tm -= 60
-    # Keep track of which power-up is active
     freeze_time = False
     plus_three = False
     plus_five = False
+    double_points = False
+    add_time = False
+    skip = False
+    immunity = False
+    jeopardy = False
     while play:
         if freeze_time:
             target_tm = None
-        if int(time.ctime()[17:19]) == target_tm: # Checks if the player has run out of time
+        elif add_time: 
+            target_tm += 20
+            temp_tm += 20
+        try: 
+            if target_tm > 60: target_tm -= 60
+        except TypeError: 
+            target_tm = 0
+        if int(time.ctime()[17:19]) == target_tm:
             incorrect_word = word.upper()
             incorrect = True
             word, length, letters_used, correct_letters_guessed, words = select_new_word(word, words)
@@ -776,22 +730,29 @@ def game(level, username):
                 py.display.update()
                 clock.tick(60)
             tm = int(time.ctime()[17:19])
+            if not immunity:
+                play = False
+            else:
+                buffer = 0
             target_tm = tm + guesstime + buffer
+            buffer = 3
             temp_tm = target_tm
             if target_tm >= 60: target_tm -= 60
-            play = False
             continue
-        if not freeze_time and int(temp_tm - int(time.ctime()[17:19])) <= 30:
+        if not freeze_time and int(temp_tm - int(time.ctime()[17:19])) < 60:
             clock_text = font.render(str(temp_tm - int(time.ctime()[17:19])), True, py.Color("red"))
-        elif not freeze_time and int(temp_tm - int(time.ctime()[17:19])) > 30:
+        elif not freeze_time and int(temp_tm - int(time.ctime()[17:19])) >= 60:
             clock_text = font.render(str(target_tm - int(time.ctime()[17:19])), True, py.Color("red"))
         else:
             clock_text = font.render('FROZEN', True, freeze_color)
+        if add_time: 
+            target_tm -= 20
+            temp_tm -= 20
         clock_rect = clock_text.get_rect()
         clock_rect.center = (width // 2, height * 0.1)
         points_gained = 0
 
-        if len(word) != word_length: # Ensures that the user is given a word with an appropriate length according to the difficuly level
+        if len(word) != word_length:
             words.remove(word + '\n')
             word, length = pick_word(words)
 
@@ -836,16 +797,26 @@ def game(level, username):
                             print("correct")
                             letters_used.append(guess)
                             correct_letters_guessed.append(guess)
+                            correct = True
+                            for c in word:
+                                if c not in letters_used:
+                                    correct = False
+                                    break
+                            if not correct:
+                                play_effect('correct.wav')
                         elif guess not in letters_used:
                             letters_used.append(guess)
-                        correct = True
-                        for c in word:
-                            if c not in letters_used:
-                                correct = False
-                                break
+                        if power_up == 4 or power_up == 8:
+                            temp_power_up = power_up
+                            power_up = None
                         if correct:
-                            print("you guessed everything")
                             points_gained = (10 * len(word)) - (len(letters_used) - len(correct_letters_guessed))
+                            if double_points: 
+                                points_gained *= 2
+                                double_points = False
+                            elif jeopardy:
+                                points_gained = score // 2
+                                jeopardy = False
                             score += points_gained
                             counter += 1
                             print(score)
@@ -859,14 +830,32 @@ def game(level, username):
                             incorrect_word = word.upper()
                             incorrect = True
                             word, _, letters_used, correct_letters_guessed, words = select_new_word(word, words)
+                            if jeopardy:
+                                prev_score = score
+                                score //= 2
                     elif chr(event.key) == '1' and has_power and power_up != None:
-                        print("power up used")
+                        play_effect('power_up.wav')
                         if power_up == 0:
                             for w in word:
                                 if w not in correct_letters_guessed:
                                     correct_letters_guessed.append(w)
                                     letters_used.append(w)
                                     break
+                            correct = True
+                            for c in word:
+                                if c not in letters_used:
+                                    correct = False
+                                    break
+                            points_gained = (10 * len(word)) - (len(letters_used) - len(correct_letters_guessed))
+                            score += points_gained
+                            counter += 1
+                            print(score)
+                            correct_word = word.upper()
+                            word, _, letters_used, correct_letters_guessed, words = select_new_word(word, words)
+                            tm = int(time.ctime()[17:19])
+                            target_tm = tm + guesstime + buffer
+                            temp_tm = target_tm
+                            if target_tm >= 60: target_tm -= 60
                         elif power_up == 1:
                             freeze_time = True
                         elif power_up == 2:
@@ -875,6 +864,21 @@ def game(level, username):
                         elif power_up == 3:
                             num_guesses += 5
                             plus_five = True
+                        elif power_up == 4 and len(letters_used) == 0 and len(correct_letters_guessed) == 0:
+                            double_points = True
+                            temp_power_up = power_up
+                        elif power_up == 5:
+                            add_time = True
+                            guesstime += 20
+                        elif power_up == 6:
+                            skipped_word = word.upper()
+                            skip = True
+                            word, _, letters_used, correct_letters_guessed, words = select_new_word(word, words)
+                        elif power_up == 7:
+                            immunity = True
+                        elif power_up == 8 and len(letters_used) == 0 and len(correct_letters_guessed) == 0:
+                            jeopardy = True
+                            temp_power_up = power_up
                         power_up = None
                         has_power = False
                     elif event.key == py.K_ESCAPE:
@@ -883,12 +887,13 @@ def game(level, username):
                         
             except ValueError:
                 continue
-        # Change screen to cut-screen if the player is correct
+        
         if correct:
             t = int(time.ctime()[17:19])
             target_time = t + 3
             if target_time >= 60: target_time -= 60
             tmp_power_up = random.randint(0,3)
+            play_effect('correct_word.wav')
             while int(time.ctime()[17:19]) != target_time:
                 cmessage_text = font.render("Great Job!", True, green)
                 correct_text = font.render(f'{correct_word}', True, green)
@@ -904,6 +909,7 @@ def game(level, username):
                 screen.blit(img, (0, 0))
                 if counter % 3 == 0 and counter != 0:
                     power_up = tmp_power_up
+                    temp_power_up = None
                     power_header = font.render("You earned", True, txt_color)
                     header_rect = power_header.get_rect()
                     header_rect.center = (width // 2, (height // 3) * 2)
@@ -915,6 +921,8 @@ def game(level, username):
                     has_power = True
                 else:
                     draw_screen(screen, [[correct_text, correct_rect], [message_text, message_rect], [cmessage_text, cmessage_rect]])
+                if temp_power_up != None:
+                    power_up = temp_power_up
                 py.display.flip()
                 py.display.update()
                 clock.tick(60)
@@ -925,13 +933,47 @@ def game(level, username):
             elif plus_five:
                 num_guesses -= 5
                 plus_five = False
+            elif add_time:
+                guesstime -= 20
+                add_time = False
             continue
-        elif incorrect: # changes screen to appropriate screen if the player guesses the word incorrectly
+        elif incorrect:
+            t = int(time.ctime()[17:19])
+            target_time = t + 3
+            if target_time >= 60: target_time -= 60
+            start_new_thread(play_effect, ('incorrect.wav',))
+            while int(time.ctime()[17:19]) != target_time:
+                wrong_text = font.render(f'{incorrect_word}', True, py.Color("red"))
+                message_text = font.render(f'was the correct answer', True, txt_color)
+                wrong_rect = wrong_text.get_rect()
+                message_rect = message_text.get_rect()
+                wrong_rect.center = (width // 2, height // 2)
+                message_rect.center = (width // 2, height // 2 + 34)
+
+                if jeopardy:
+                    points_lost = prev_score - score
+                    points_lost_text = font.render(f'You lost {points_lost} points', True, txt_color)
+                    pl_rect = points_lost_text.get_rect()
+                    pl_rect.center = (width // 2, height * 0.8)
+
+                screen.fill(txt_color)
+                img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
+                screen.blit(img, (0, 0))
+                if jeopardy: draw_screen(screen, [[wrong_text, wrong_rect], [message_text, message_rect], [points_lost_text, pl_rect]])
+                else: draw_screen(screen, [[wrong_text, wrong_rect], [message_text, message_rect]])
+                py.display.flip()
+                py.display.update()
+                clock.tick(60)
+            if not immunity:
+                play = False
+            if jeopardy: jeopardy = False
+            continue
+        elif skip:
             t = int(time.ctime()[17:19])
             target_time = t + 3
             if target_time >= 60: target_time -= 60
             while int(time.ctime()[17:19]) != target_time:
-                wrong_text = font.render(f'{incorrect_word}', True, py.Color("red"))
+                wrong_text = font.render(f'{skipped_word}', True, py.Color("red"))
                 message_text = font.render(f'was the correct answer', True, txt_color)
                 wrong_rect = wrong_text.get_rect()
                 message_rect = message_text.get_rect()
@@ -944,7 +986,7 @@ def game(level, username):
                 py.display.flip()
                 py.display.update()
                 clock.tick(60)
-            play = False
+            skip = False
             continue
         screen.fill(txt_color)
         img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
@@ -961,14 +1003,11 @@ def game(level, username):
     end(score, level, username)
 
 def end(score, level, username):
-    '''
-    Final screen that displays the users final score and stores it in leaderboard.txt along with their username
-    '''
     clock = py.time.Clock()
     start = True
-    scolor = primary_color
     try:
         u = User(username)
+        update_users()
         if u not in users:
             with open('leaderboard.txt', 'a') as f:
                 u.update_high_scores(score, level)
@@ -993,44 +1032,37 @@ def end(score, level, username):
             scoret_rect = scoret.get_rect()
             scoret_rect.center = (width // 2, height // 2 + 34)
 
-            back_text = font.render('BACK TO MENU', True, button_txt_color)
+            back_text = font.render('Press ENTER to Return', True, txt_color)
             back_rect = back_text.get_rect()
             back_rect.center = (width // 2, (height // 5) * 4)
-            back_button = py.Rect(0, 0, 400, 60)
-            back_button.center = (width // 2, (height // 5) * 4)
 
             for event in py.event.get():
                 if event.type == py.KEYDOWN:
                     if event.key == py.K_ESCAPE:
                         start = False
                         break
+                    elif event.key == py.K_RETURN:
+                        play_effect('select.wav')
+                        main()
+                        exit()
                 elif event.type == py.QUIT:
                     start = False
                     break
-                elif event.type == py.MOUSEMOTION:
-                    mpos = py.mouse.get_pos()
-                    if back_button.collidepoint(mpos): 
-                        scolor = secondary_color 
-                    else:
-                        scolor = primary_color
-                elif event.type == py.MOUSEBUTTONDOWN:
-                    if scolor == secondary_color:
-                        main()
-                        exit()
-                        start = False
-                        continue
             screen.fill(txt_color)
             img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
             screen.blit(img, (0, 0))
-            py.draw.rect(screen, scolor, back_button)
             draw_screen(screen, [[score_text, scoretx_rect], [scoret, scoret_rect], [back_text, back_rect]])
             py.display.flip()
             py.display.update()
             clock.tick(60)
-    except AttributeError:
+    except AttributeError as e:
+        print(str(e))
         main()
         exit()
 
 
 if __name__ == "__main__":
+    start_new_thread(change_themes, (0,))
+    start_new_thread(play_bg_music, ('bg_music.wav',))
+    time.sleep(1.9)
     main()

@@ -20,7 +20,7 @@ bgs = ['bg/space.png',
 'bg/sky.png',
 'bg/forest.png',
 'bg/night.jpeg',
-'bg/beach.png']
+'bg/mountain.png']
 txt_colors = [py.Color("white"), py.Color("black"), py.Color("gray"), py.Color("white"), py.Color("black")]
 button_txt_colors = [py.Color("black"), py.Color("black"), py.Color("black"), py.Color("black"), py.Color("black")]
 pcolors = [py.Color("salmon"), (245, 217, 59), (245, 217, 59), py.Color("salmon"), (245, 217, 59)]

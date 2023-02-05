@@ -6,8 +6,6 @@ from _thread import start_new_thread
 
 '''
 BUGS TO FIX
-I can use a guess when I am on the screen after a correct word
-Leaderboard duplicates.
 BG music plays once
 '''
 
@@ -17,8 +15,6 @@ screen = py.display.set_mode(dimensions)
 font = py.font.Font('ARCADE_N.ttf', 32)
 bfont = py.font.Font('ARCADE_N.ttf', 38)
 ifont = py.font.Font('ARCADE_N.ttf', 10)
-users = []
-
 global bgs 
 bgs = ['bg/space.png', 
 'bg/sky.png',
@@ -84,10 +80,13 @@ def change_themes(index):
     green = greens[index]
 
 def update_users():
+    global users
+    users = []
     with open('leaderboard.txt', 'r') as f:
         lines = f.readlines()
         for line in lines:
-            users.append(str_to_usr(line))
+            if len(line) > 9:
+                users.append(str_to_usr(line))
         f.close()
 
 def str_to_usr(userstr):
@@ -794,7 +793,6 @@ def game(level, username):
                     if chr(event.key).isalpha():
                         guess = chr(event.key)
                         if guess in word and guess not in letters_used:
-                            print("correct")
                             letters_used.append(guess)
                             correct_letters_guessed.append(guess)
                             correct = True
@@ -819,7 +817,6 @@ def game(level, username):
                                 jeopardy = False
                             score += points_gained
                             counter += 1
-                            print(score)
                             correct_word = word.upper()
                             word, _, letters_used, correct_letters_guessed, words = select_new_word(word, words)
                             tm = int(time.ctime()[17:19])
@@ -849,7 +846,6 @@ def game(level, username):
                             points_gained = (10 * len(word)) - (len(letters_used) - len(correct_letters_guessed))
                             score += points_gained
                             counter += 1
-                            print(score)
                             correct_word = word.upper()
                             word, _, letters_used, correct_letters_guessed, words = select_new_word(word, words)
                             tm = int(time.ctime()[17:19])
@@ -869,7 +865,6 @@ def game(level, username):
                             temp_power_up = power_up
                         elif power_up == 5:
                             add_time = True
-                            guesstime += 20
                         elif power_up == 6:
                             skipped_word = word.upper()
                             skip = True
@@ -889,43 +884,7 @@ def game(level, username):
                 continue
         
         if correct:
-            t = int(time.ctime()[17:19])
-            target_time = t + 3
-            if target_time >= 60: target_time -= 60
-            tmp_power_up = random.randint(0,3)
-            play_effect('correct_word.wav')
-            while int(time.ctime()[17:19]) != target_time:
-                cmessage_text = font.render("Great Job!", True, green)
-                correct_text = font.render(f'{correct_word}', True, green)
-                message_text = font.render(f'was correct: +{points_gained}', True, txt_color)
-                cmessage_rect = cmessage_text.get_rect()
-                correct_rect = correct_text.get_rect()
-                message_rect = message_text.get_rect()
-                cmessage_rect.center = (width // 2, height // 3)
-                correct_rect.center = (width // 2, height // 2)
-                message_rect.center = (width // 2, height // 2 + 34)
-                screen.fill(txt_color)
-                img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
-                screen.blit(img, (0, 0))
-                if counter % 3 == 0 and counter != 0:
-                    power_up = tmp_power_up
-                    temp_power_up = None
-                    power_header = font.render("You earned", True, txt_color)
-                    header_rect = power_header.get_rect()
-                    header_rect.center = (width // 2, (height // 3) * 2)
-                    power_text = font.render(f'{power_ups[power_up]}', True, freeze_color)
-                    power_rect = power_text.get_rect();
-                    power_rect.center = (width // 2, ((height // 3) * 2) + 34)
-                    draw_screen(screen, [[correct_text, correct_rect], [message_text, message_rect], 
-                    [power_text, power_rect], [power_header, header_rect], [cmessage_text, cmessage_rect]])
-                    has_power = True
-                else:
-                    draw_screen(screen, [[correct_text, correct_rect], [message_text, message_rect], [cmessage_text, cmessage_rect]])
-                if temp_power_up != None:
-                    power_up = temp_power_up
-                py.display.flip()
-                py.display.update()
-                clock.tick(60)
+            power_up, temp_power_up, has_power = correct_screen(counter, clock, correct_word, points_gained, power_ups, temp_power_up, power_up, has_power)
             if freeze_time: freeze_time = False
             elif plus_three: 
                 num_guesses -= 3
@@ -934,7 +893,6 @@ def game(level, username):
                 num_guesses -= 5
                 plus_five = False
             elif add_time:
-                guesstime -= 20
                 add_time = False
             continue
         elif incorrect:
@@ -1002,12 +960,51 @@ def game(level, username):
         clock.tick(60)
     end(score, level, username)
 
+def correct_screen(counter, clock, correct_word, points_gained, power_ups, temp_power_up, power_up, has_power):
+    t = int(time.ctime()[17:19])
+    target_time = t + 3
+    if target_time >= 60: target_time -= 60
+    tmp_power_up = random.randint(0,8)
+    play_effect('correct_word.wav')
+    while int(time.ctime()[17:19]) != target_time:
+        cmessage_text = font.render("Great Job!", True, green)
+        correct_text = font.render(f'{correct_word}', True, green)
+        message_text = font.render(f'was correct: +{points_gained}', True, txt_color)
+        cmessage_rect = cmessage_text.get_rect()
+        correct_rect = correct_text.get_rect()
+        message_rect = message_text.get_rect()
+        cmessage_rect.center = (width // 2, height // 3)
+        correct_rect.center = (width // 2, height // 2)
+        message_rect.center = (width // 2, height // 2 + 34)
+        screen.fill(txt_color)
+        img = py.transform.scale(py.image.load(bg_path).convert(), (width, height))
+        screen.blit(img, (0, 0))
+        if counter % 3 == 0 and counter != 0:
+            power_up = tmp_power_up
+            temp_power_up = None
+            power_header = font.render("You earned", True, txt_color)
+            header_rect = power_header.get_rect()
+            header_rect.center = (width // 2, (height // 3) * 2)
+            power_text = font.render(f'{power_ups[power_up]}', True, freeze_color)
+            power_rect = power_text.get_rect();
+            power_rect.center = (width // 2, ((height // 3) * 2) + 34)
+            draw_screen(screen, [[correct_text, correct_rect], [message_text, message_rect], 
+            [power_text, power_rect], [power_header, header_rect], [cmessage_text, cmessage_rect]])
+            has_power = True
+        else:
+            draw_screen(screen, [[correct_text, correct_rect], [message_text, message_rect], [cmessage_text, cmessage_rect]])
+        if temp_power_up != None:
+            power_up = temp_power_up
+        py.display.flip()
+        py.display.update()
+        clock.tick(60)
+    return power_up, temp_power_up, has_power
+
 def end(score, level, username):
     clock = py.time.Clock()
     start = True
     try:
         u = User(username)
-        update_users()
         if u not in users:
             with open('leaderboard.txt', 'a') as f:
                 u.update_high_scores(score, level)
